@@ -281,7 +281,7 @@ Test3_fit_df.head()
 # %% [markdown]
 # Curve Fitting
 # %%
-gas_drawdown = pavg**2 - Test3_fit_df['Pwf']**2
+gas_drawdown = pavg**2 - Test3_fit_df['Pwf']**2git 
 linreg_result = scipy.stats.linregress(gas_drawdown, Test3_fit_df['qg'])
 C = linreg_result.slope
 print(f"Estimated deliverability constant (C): {C:.4f} MMscf/d/psia^2")
