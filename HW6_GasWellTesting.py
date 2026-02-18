@@ -175,5 +175,175 @@ AOF_from_theoretical = qg_from_theoretical_deliverability(Pavg**2, a, b)
 print(f'Absolute Open Flow (AOF) from Empirical: {AOF_from_empirical:.4f} MMscf/d')
 print(f'Absolute Open Flow (AOF) from Theoretical: {AOF_from_theoretical:.4f} MMscf/d')
 
+# %% [markdown]
+# ### Question 2
+# Analyze AOF using the isochronal method.
+
+# Define Table 2 data:
+# %%
+Duration = np.array([12, 12, 12, 12,72]) # hours
+Pwf = np.array([1761,1694,1510,1320,1151]) # psia
+qg = np.array([2.6,3.3,5.0,6.3,6.0]) # MMscf/d
+Pavg = 1952 # psia
+Test2_df = pd.DataFrame({'Duration': Duration, 'Pwf': Pwf, 'qg': qg})
+Test2_df['Flow'] = 'Non-Stable'
+Test2_df.loc[Test2_df['Duration'] >= 72, 'Flow'] = 'Stable'
+print(Test2_df.head())
+
+# Fit data with stable flow removed, because equations given assume laminar flow not PSS
+Test2_fit_df = Test2_df[Test2_df['Flow'] != 'Stable']
+
+gas_drawdown = Pavg**2 - Test2_fit_df['Pwf']**2
+
+C_opt, _ = scipy.optimize.curve_fit(empirical_deliverability, gas_drawdown, Test2_fit_df['qg'])
+C = C_opt[0]
+print(f"Estimated deliverability constant (C): {C:.4f} MMscf/d/psia^2")
+
+gas_drawdown_over_qg = (Pavg**2 - Test2_fit_df['Pwf']**2)/Test2_fit_df['qg']
+b, a = np.polyfit(Test2_fit_df['qg'], gas_drawdown_over_qg, 1)
+print("Theoretical Deliverability Params:")
+print(f"a = {a:.4f}")
+print(f"b = {b:.4f}") 
+
+# %% [markdown]
+# Plot fit results for isochronal test:
+# %%
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=gas_drawdown, y=Test2_fit_df['qg'], label='Data')
+x_fit = np.linspace(min(gas_drawdown), max(gas_drawdown), 100)
+y_fit_empirical = empirical_deliverability(x_fit, C)
+plt.plot(x_fit, y_fit_empirical, color='red', label='Empirical Fit')
+plt.xlabel('Gas Drawdown (Pavg^2 - Pwf^2) [psia^2]')
+plt.ylabel('Gas Flow Rate (qg) [MMscf/d]')
+plt.title('Empirical Deliverability Fit')
+plt.legend()
+plt.savefig('plots/hw6/t2_empirical_deliverability_fit.png')
+plt.close()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.scatterplot(x=Test2_fit_df['qg'], y=gas_drawdown_over_qg, label='Data', ax=ax)
+x_fit = np.linspace(min(Test2_fit_df['qg']), max(Test2_fit_df['qg']), 100)
+y_fit_theoretical = theoretical_deliverability(x_fit, a, b)
+ax.plot(x_fit, y_fit_theoretical, color='red', label='Theoretical Fit')
+ax.set_xlabel('Gas Flow Rate (qg) [MMscf/d]')
+ax.set_ylabel('(Pavg^2 - Pwf^2)/qg [psia^2/(MMscf/d)]')
+ax.set_title('Theoretical Deliverability Fit')
+ax.legend()
+plt.savefig('plots/hw6/t2_theoretical_deliverability_fit.png')
+plt.close()
+
+# %%
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.scatterplot(data=Test2_fit_df,x='Pwf', y='qg', label='Data', ax=ax)
+
+Pwf_fit = np.linspace(min(Test2_fit_df['Pwf']), max(Test2_fit_df['Pwf']), 100)
+gas_drawdown_fit = Pavg**2 - Pwf_fit**2
+qg_empirical_fit = qg_from_empirical_deliverability(gas_drawdown_fit, C)
+qg_theoretical_fit = qg_from_theoretical_deliverability(gas_drawdown_fit, a, b)
+
+
+ax.plot(Pwf_fit, qg_empirical_fit, color='red', label='Empirical Fit')
+ax.plot(Pwf_fit, qg_theoretical_fit, color='green', label='Theoretical Fit')
+ax.set_xlabel('Bottom Hole Pressure (Pwf) [psia]')
+ax.set_ylabel('Gas Flow Rate (qg) [MMscf/d]')
+ax.set_title('Gas Flow Rate vs Bottom Hole Pressure')
+plt.legend()
+plt.savefig('plots/hw6/t2_qg_vs_pwf.png')
+plt.close()
+
+# %% [markdown]
+# AOF:
+
 # %%
 
+AOF_from_empirical = qg_from_empirical_deliverability(Pavg**2, C)
+AOF_from_theoretical = qg_from_theoretical_deliverability(Pavg**2, a, b)
+
+print(f'Absolute Open Flow (AOF) from Empirical: {AOF_from_empirical:.4f} MMscf/d')
+print(f'Absolute Open Flow (AOF) from Theoretical: {AOF_from_theoretical:.4f} MMscf/d')
+
+# %% [markdown]
+# ### Question 3
+# Analyze AOF using the modified isochronal method.
+
+# %% 
+pavg = 1948
+Duration = np.array([12, 12, 12, 12,81]) # hours
+Pwf = np.array([1784,1680,1546,1355,1233]) # psia
+qg = np.array([4.5,5.6,6.85,8.25,8.0]) # MMscf/d
+Test3_df = pd.DataFrame({'Duration': Duration, 'Pwf': Pwf, 'qg': qg})
+Test3_df['Flow'] = 'Non-Stable'
+Test3_df.loc[Test3_df['Duration'] >= 72, 'Flow'] = 'Stable'
+
+# Fit data with stable flow removed, because equations given assume laminar flow not PSS
+Test3_fit_df = Test3_df[Test3_df['Flow'] != 'Stable']
+Test3_fit_df.head()
+# %% [markdown]
+# Curve Fitting
+# %%
+gas_drawdown = pavg**2 - Test3_fit_df['Pwf']**2
+linreg_result = scipy.stats.linregress(gas_drawdown, Test3_fit_df['qg'])
+C = linreg_result.slope
+print(f"Estimated deliverability constant (C): {C:.4f} MMscf/d/psia^2")
+gas_drawdown_over_qg = (pavg**2 - Test3_fit_df['Pwf']**2)/Test3_fit_df['qg']
+b, a = np.polyfit(Test3_fit_df['qg'], gas_drawdown_over_qg, 1)
+print("Theoretical Deliverability Params:")
+print(f"a = {a:.4f}")
+print(f"b = {b:.4f}")
+
+# %% [markdown]
+# Plot fit results for modified isochronal test:
+# %%
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=gas_drawdown, y=Test3_fit_df['qg'], label='Data')
+x_fit = np.linspace(min(gas_drawdown), max(gas_drawdown), 100)
+y_fit_empirical = empirical_deliverability(x_fit, C)
+plt.plot(x_fit, y_fit_empirical, color='red', label='Empirical Fit')
+plt.xlabel('Gas Drawdown (Pavg^2 - Pwf^2) [psia^2]')
+plt.ylabel('Gas Flow Rate (qg) [MMscf/d]')
+plt.title('Empirical Deliverability Fit')
+plt.legend()
+plt.savefig('plots/hw6/t3_empirical_deliverability_fit.png')
+plt.close()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.scatterplot(x=Test3_fit_df['qg'], y=gas_drawdown_over_qg, label='Data', ax=ax)
+x_fit = np.linspace(min(Test3_fit_df['qg']), max(Test3_fit_df['qg']), 100)
+y_fit_theoretical = theoretical_deliverability(x_fit, a, b)
+ax.plot(x_fit, y_fit_theoretical, color='red', label='Theoretical Fit')
+ax.set_xlabel('Gas Flow Rate (qg) [MMscf/d]')
+ax.set_ylabel('(Pavg^2 - Pwf^2)/qg [psia^2/(MMscf/d)]')
+ax.set_title('Theoretical Deliverability Fit')
+ax.legend()
+plt.savefig('plots/hw6/t3_theoretical_deliverability_fit.png')
+plt.close()
+
+# %%
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.scatterplot(data=Test3_fit_df,x='Pwf', y='qg', label='Data', ax=ax)
+
+Pwf_fit = np.linspace(min(Test3_fit_df['Pwf']), max(Test3_fit_df['Pwf']), 100)
+gas_drawdown_fit = Pavg**2 - Pwf_fit**2
+qg_empirical_fit = qg_from_empirical_deliverability(gas_drawdown_fit, C)
+qg_theoretical_fit = qg_from_theoretical_deliverability(gas_drawdown_fit, a, b)
+
+
+ax.plot(Pwf_fit, qg_empirical_fit, color='red', label='Empirical Fit')
+ax.plot(Pwf_fit, qg_theoretical_fit, color='green', label='Theoretical Fit')
+ax.set_xlabel('Bottom Hole Pressure (Pwf) [psia]')
+ax.set_ylabel('Gas Flow Rate (qg) [MMscf/d]')
+ax.set_title('Gas Flow Rate vs Bottom Hole Pressure')
+plt.legend()
+plt.savefig('plots/hw6/t3_qg_vs_pwf.png')
+plt.close()
+
+# %% [markdown]
+# AOF:
+
+# %%
+
+AOF_from_empirical = qg_from_empirical_deliverability(Pavg**2, C)
+AOF_from_theoretical = qg_from_theoretical_deliverability(Pavg**2, a, b)
+
+print(f'Absolute Open Flow (AOF) from Empirical: {AOF_from_empirical:.4f} MMscf/d')
+print(f'Absolute Open Flow (AOF) from Theoretical: {AOF_from_theoretical:.4f} MMscf/d')
